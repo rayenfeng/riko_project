@@ -9,7 +9,12 @@ from openai import OpenAI
 with open('character_config.yaml', 'r') as f:
     char_config = yaml.safe_load(f)
 
-client = OpenAI(api_key=char_config['OPENAI_API_KEY'])
+# Initialize OpenAI client with custom endpoint support
+client_kwargs = {'api_key': char_config['OPENAI_API_KEY']}
+if char_config.get('OPENAI_API_BASE') and char_config['OPENAI_API_BASE'].strip():
+    client_kwargs['base_url'] = char_config['OPENAI_API_BASE'].strip()
+
+client = OpenAI(**client_kwargs)
 
 # Constants
 HISTORY_FILE = char_config['history_file']
