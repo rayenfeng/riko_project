@@ -18,6 +18,12 @@ All prompts and parameters are stored in `config.yaml`.
 
 ```yaml
 OPENAI_API_KEY: sk-YOURAPIKEY
+# Optional: Custom API endpoint for OpenAI (leave empty to use default OpenAI endpoint)
+# Examples:
+# - Azure OpenAI: https://your-resource-name.openai.azure.com/
+# - Local models: http://localhost:8000/v1/
+# - Other OpenAI-compatible APIs: https://api.example.com/v1/
+OPENAI_API_BASE: ""
 history_file: chat_history.json
 model: "gpt-4.1-mini"
 presets:
@@ -37,6 +43,14 @@ sovits_ping_config:
 
 You can define personalities by modiying the config file.
 
+### Custom API Endpoints
+
+You can now use custom OpenAI-compatible API endpoints by setting the `OPENAI_API_BASE` field in your config:
+
+- **Azure OpenAI**: Set to your Azure OpenAI resource endpoint (e.g., `https://your-resource-name.openai.azure.com/`)
+- **Local models**: Use local endpoints like `http://localhost:8000/v1/` for self-hosted models
+- **Other providers**: Any OpenAI-compatible API endpoint
+- **Default OpenAI**: Leave empty or omit to use the standard OpenAI API
 
 ## 🛠️ Setup
 
