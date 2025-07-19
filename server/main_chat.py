@@ -3,8 +3,6 @@ from process.asr_func.asr_push_to_talk import record_and_transcribe
 from process.llm_funcs.llm_scr import llm_response
 from process.tts_func.sovits_ping import sovits_gen, play_audio
 from pathlib import Path
-import os
-import time
 ### transcribe audio 
 import uuid
 import soundfile as sf

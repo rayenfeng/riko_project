@@ -1,15 +1,23 @@
 # OpenAI tool calling with history 
 ### Uses a sample function
 import yaml
-import gradio as gr
 import json
 import os
 from openai import OpenAI
+from google import genai
+from google.genai import types
 
 with open('character_config.yaml', 'r') as f:
     char_config = yaml.safe_load(f)
 
-client = OpenAI(api_key=char_config['OPENAI_API_KEY'])
+PROVIDER = char_config.get('provider', 'openai')
+
+if PROVIDER == 'gemini':
+    client = genai.Client(
+        api_key=os.getenv('GEMINI_API_KEY', char_config.get('GEMINI_API_KEY')),
+    )
+else:
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY', char_config['OPENAI_API_KEY']))
 
 # Constants
 HISTORY_FILE = char_config['history_file']
@@ -40,23 +48,38 @@ def save_history(history):
 
 
 def get_riko_response_no_tool(messages):
+    """Return a reply from the configured language model."""
 
-    # Call OpenAI with system prompt + history
-    response = client.responses.create(
+    if PROVIDER == 'gemini':
+        contents = [
+            types.Content(
+                role=m["role"],
+                parts=[types.Part.from_text(text="".join(item["text"] for item in m["content"]))],
+            )
+            for m in messages
+        ]
+        generate_content_config = types.GenerateContentConfig(
+            response_mime_type="text/plain",
+        )
+        result = ""
+        for chunk in client.models.generate_content_stream(
+            model=MODEL,
+            contents=contents,
+            config=generate_content_config,
+        ):
+            result += chunk.text
+        return result
+
+    # default to OpenAI
+    response = client.chat.completions.create(
         model=MODEL,
-        input= messages,
+        messages=[{"role": m["role"], "content": "".join(item["text"] for item in m["content"])} for m in messages],
         temperature=1,
         top_p=1,
-        max_output_tokens=2048,
-        stream=False,
-        text={
-            "format": {
-            "type": "text"
-            }
-        },
+        max_tokens=2048,
     )
 
-    return response
+    return response.choices[0].message.content
 
 
 def llm_response(user_input):
@@ -77,14 +100,14 @@ def llm_response(user_input):
 
     # just append assistant message to regular response. 
     messages.append({
-    "role": "assistant",
-    "content": [
-        {"type": "output_text", "text": riko_test_response.output_text}
-    ]
+        "role": "assistant",
+        "content": [
+            {"type": "output_text", "text": riko_test_response}
+        ]
     })
 
     save_history(messages)
-    return riko_test_response.output_text
+    return riko_test_response
 
 
 if __name__ == "__main__":
