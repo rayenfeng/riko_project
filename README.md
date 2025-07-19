@@ -5,7 +5,7 @@ Project Riko is a anime focused LLM project by Just Rayen. She listens, and reme
 **tested with python 3.10 Windows >10 and Linux Ubuntu**
 ## ✨ Features
 
-- 💬 **LLM-based dialogue** using OpenAI API (configurable system prompts)
+- 💬 **LLM-based dialogue** using OpenAI or Google Gemini (configurable system prompts)
 - 🧠 **Conversation memory** to keep context during interactions
 - 🔊 **Voice generation** via GPT-SoVITS API
 - 🎧 **Speech recognition** using Faster-Whisper
@@ -14,10 +14,12 @@ Project Riko is a anime focused LLM project by Just Rayen. She listens, and reme
 
 ## ⚙️ Configuration
 
-All prompts and parameters are stored in `config.yaml`.
+All prompts and parameters are stored in `character_config.yaml`.
 
 ```yaml
 OPENAI_API_KEY: sk-YOURAPIKEY
+GEMINI_API_KEY: your-gemini-key
+provider: openai  # or 'gemini'
 history_file: chat_history.json
 model: "gpt-4.1-mini"
 presets:
@@ -30,12 +32,12 @@ presets:
 sovits_ping_config:
   text_lang: en
   prompt_lang : en
-  ref_audio_path : D:\PyProjects\waifu_project\riko_project\character_files\main_sample.wav
+  ref_audio_path : character_files/main_sample.wav
   prompt_text : This is a sample voice for you to just get started with because it sounds kind of cute but just make sure this doesn't have long silences.
   
-````
+```
 
-You can define personalities by modiying the config file.
+You can define personalities by modifying the config file.
 
 
 ## 🛠️ Setup
@@ -65,6 +67,12 @@ uv pip install -r requirements.txt
 python main_chat.py
 ```
 
+### 3. Text chat client
+
+```bash
+python client/text_chat.py
+```
+
 The flow:
 
 1. Riko listens to your voice via microphone (push to talk)
@@ -87,11 +95,12 @@ The flow:
 
 * Voice synthesis powered by [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)
 * ASR via [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper)
-* Language model via [OpenAI GPT](https://platform.openai.com)
+* Language model via [OpenAI GPT](https://platform.openai.com) or
+  [Google Gemini](https://cloud.google.com/ai/generative-ai)
 
 
 ## 📜 License
 
-MIT — feel free to clone, modify, and build your own waifu voice companion.
+MIT — feel free to clone, modify, and build your own waifu voice companion. See the LICENSE file for details.
 
 
