@@ -1,0 +1,5 @@
+audio/*.wav
+chat_history.json
+__pycache__/
+.pytest_cache/
+.DS_Store

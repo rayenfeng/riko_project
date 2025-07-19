@@ -1,3 +1,4 @@
 faster-whisper
 sounddevice
 openai
+google-genai
