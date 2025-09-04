@@ -1,6 +1,6 @@
-OPENAI_API_KEY: sk-YOURAPIKEY
+GROQ_API_KEY: YOUR_GROQ_API_KEY_HERE
 history_file: chat_history.json
-model: "gpt-4.1-mini"
+model: "groq/llama-3.1-8b-instant"
 presets:
   default:
     system_prompt: |
@@ -11,6 +11,5 @@ presets:
 sovits_ping_config:
   text_lang: en
   prompt_lang : en
-  ref_audio_path : D:\PyProjects\waifu_project\riko_project\character_files\main_sample.wav
+  ref_audio_path : character_files/main_sample.wav
   prompt_text : This is a sample voice for you to just get started with because it sounds kind of cute but just make sure this doesn't have long silences.
-  

@@ -17,15 +17,21 @@ Project Riko is a anime focused LLM project by Just Rayen. She listens, and reme
 All prompts and parameters are stored in `config.yaml`.
 
 ```yaml
-OPENAI_API_KEY: sk-YOURAPIKEY
+.GROQ_API_KEY: YOUR_GROQ_API_KEY_HERE
 history_file: chat_history.json
-model: "gpt-4.1-mini"
+model: "groq/llama-3.1-8b-instant"
 presets:
   default:
     system_prompt: |
       You are a helpful assistant named Riko.
       You speak like a snarky anime girl.
       Always refer to the user as "senpai".
+
+sovits_ping_config:
+  text_lang: en
+  prompt_lang : en
+  ref_audio_path : character_files/main_sample.wav
+  prompt_text : This is a sample voice for you to just get started with because it sounds kind of cute but just make sure this doesn't have long silences.
 
 sovits_ping_config:
   text_lang: en

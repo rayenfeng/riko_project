@@ -23,7 +23,7 @@ while True:
     conversation_recording = output_wav_path = Path("audio") / "conversation.wav"
     conversation_recording.parent.mkdir(parents=True, exist_ok=True)
 
-    user_spoken_text = record_and_transcribe(whisper_model, conversation_recording)
+    user_spoken_text = record_and_transcribe(whisper_model, conversation_recording, input_wav_path="character_files/main_sample.wav")
 
     ### pass to LLM and get a LLM output.
 
@@ -42,8 +42,10 @@ while True:
     # generate audio and save it to client/audio 
     gen_aud_path = sovits_gen(tts_read_text,output_wav_path)
 
-
-    play_audio(output_wav_path)
+    if gen_aud_path:
+        play_audio(output_wav_path)
+    else:
+        print("Could not generate audio, skipping playback. Please ensure the TTS server is running.")
     # clean up audio files
     [fp.unlink() for fp in Path("audio").glob("*.wav") if fp.is_file()]
     # # Example
