@@ -3,7 +3,7 @@
 # === 1. Setting Python 3.10 Interpreter ===
 PYTHON_CMD="python3.10"
 if ! command -v $PYTHON_CMD &> /dev/null; then
-    echo "Python 3.10 not found, Please install Python 3.10 or run install.sh first!"
+    echo "Python 3.10 not found, Please install Python 3.10 or run install_reqs.sh first!"
     read -p "Press any key to continue..."
     exit 1
 fi
