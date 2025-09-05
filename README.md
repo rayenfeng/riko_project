@@ -1,11 +1,13 @@
 # Project Riko
 
-Project Riko is a anime focused LLM project by Just Rayen. She listens, and remembers your conversations. It combines OpenAI’s GPT, GPT-SoVITS voice synthesis, and Faster-Whisper ASR into a fully configurable conversational pipeline.
+Project Riko is a anime focused LLM project by Just Rayen. She listens, and remembers your conversations. It combines supports multiple LLM Backends, including OpenAI, Ollama and OpenRouter.
+
+Riko is a conversational chatbot that uses your chosen AI model, including OpenAI, Ollama, and OpenRouter. It uses GPT-SoVITS, and Faster-Whisper ASR into a fully configurable conversational pipeline. 
 
 **tested with python 3.10 Windows >10 and Linux Ubuntu**
 ## ✨ Features
 
-- 💬 **LLM-based dialogue** using OpenAI API (configurable system prompts)
+- 💬 **LLM-based dialogue** using OpenAI, Ollama, or OpenRouter
 - 🧠 **Conversation memory** to keep context during interactions
 - 🔊 **Voice generation** via GPT-SoVITS API
 - 🎧 **Speech recognition** using Faster-Whisper
@@ -14,12 +16,28 @@ Project Riko is a anime focused LLM project by Just Rayen. She listens, and reme
 
 ## ⚙️ Configuration
 
-All prompts and parameters are stored in `config.yaml`.
+All prompts and parameters are stored in `character_config.yaml`.
 
 ```yaml
-OPENAI_API_KEY: sk-YOURAPIKEY
 history_file: chat_history.json
-model: "gpt-4.1-mini"
+
+# LLM Provider settings
+# Set active_provider to 'openai', 'openrouter', or 'ollama'
+active_provider: openrouter
+
+llm_providers:
+  openai:
+    api_key: "YOUR_OPENAI_API_KEY"  # Replace with your actual OpenAI key
+    base_url: "https://api.openai.com/v1"
+    model: "gpt-4o-mini" # Replace with your desired model
+  openrouter:
+  api_key: "YOUR_OPENROUTER_API_KEY" # Replace with your actual OpenRouter key
+    base_url: "https://openrouter.ai/api/v1"
+    model: "deepseek/deepseek-r1-0528:free" # Replace with your desired model
+  ollama:
+    base_url: "http://localhost:11434/v1"
+    model: "YOUR_MODEL" # You can choose any model you have pulled with Ollama
+
 presets:
   default:
     system_prompt: |
@@ -30,15 +48,26 @@ presets:
 sovits_ping_config:
   text_lang: en
   prompt_lang : en
-  ref_audio_path : D:\PyProjects\waifu_project\riko_project\character_files\main_sample.wav
+  ref_audio_path : YOUR_AUDIO_PATH # Replace with your actual audio path
   prompt_text : This is a sample voice for you to just get started with because it sounds kind of cute but just make sure this doesn't have long silences.
   
 ````
 
 You can define personalities by modiying the config file.
 
+## Automated Setup
 
-## 🛠️ Setup
+### Run the setup script:
+Windows:
+
+    setup.bat
+
+Linux:
+
+  For Linux please follow the Manual Setup instructions below.
+
+
+## 🛠️ Manual Setup
 
 ### Install Dependencies
 
@@ -56,13 +85,15 @@ uv pip install -r requirements.txt
 
 ## 🧪 Usage
 
-### 1. Launch the GPT-SoVITS API 
-
-### 2. Run the main script:
-
-
+### 1. Run the start script:
+#### Windows:
 ```bash
-python main_chat.py
+start_riko.bat
+````
+#### Linux:
+```bash
+chmod +x start_riko.sh
+./start_riko.sh
 ```
 
 The flow:
@@ -88,6 +119,7 @@ The flow:
 * Voice synthesis powered by [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)
 * ASR via [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper)
 * Language model via [OpenAI GPT](https://platform.openai.com)
+* Windows and Linux scripts: [byKoma](https://github.com/byKoma)
 
 
 ## 📜 License
