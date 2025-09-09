@@ -53,6 +53,12 @@ uv pip install -r requirements.txt
 * CUDA & cuDNN installed correctly (for Faster-Whisper GPU support)
 * `ffmpeg` installed (for audio processing)
 
+## Alternative NixOS Install using Flakes
+
+```bash
+cd ~/riko_project
+nix develop
+```
 
 ## 🧪 Usage
 
