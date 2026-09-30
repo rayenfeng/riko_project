@@ -1,6 +1,6 @@
-OPENAI_API_KEY: sk-YOURAPIKEY
+OPENAI_API_KEY: your-groq-api-key-here
 history_file: chat_history.json
-model: "gpt-4.1-mini"
+model: "llama3-70b-8192"
 presets:
   default:
     system_prompt: |
