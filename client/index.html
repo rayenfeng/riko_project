@@ -2,15 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Riko">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#17141f">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <title>Riko</title>
   <link rel="icon" href="data:,">
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; }
+    html, body { margin: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; background: #fff; }
     #start {
-      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-      font: 20px sans-serif; color: #444; background: rgba(255, 255, 255, 0.8); cursor: pointer;
+      position: fixed; z-index: 3; inset: 0; display: flex; flex-direction: column; gap: .75rem;
+      align-items: center; justify-content: center; padding: 1.5rem;
+      font: 20px system-ui, sans-serif; color: #222; background: rgba(255, 255, 255, 0.86); cursor: pointer;
+      text-align: center; touch-action: manipulation;
     }
+    #listen-panel {
+      position: fixed; z-index: 2; left: max(1rem, env(safe-area-inset-left));
+      right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom));
+      display: flex; align-items: center; justify-content: center; gap: .75rem;
+      box-sizing: border-box; padding: .65rem .8rem; border-radius: .75rem;
+      background: #17141fd9; color: #fff; font: 16px system-ui, sans-serif;
+    }
+    #listen-status { flex: 1; text-align: center; }
+    #listen-toggle {
+      border: 0; border-radius: .5rem; padding: .55rem .75rem; min-height: 2.75rem;
+      background: #b78ce6; color: #17141f; font: inherit; font-size: 16px;
+      touch-action: manipulation;
+    }
+    #voice { display: none; position: fixed; z-index: 2; left: 1rem; right: 1rem; bottom: max(4.5rem, env(safe-area-inset-bottom)); width: calc(100% - 2rem); }
+    #voice.show-controls { display: block; }
   </style>
   <script type="importmap">
     {
@@ -24,7 +47,8 @@
 </head>
 <body>
   <div id="start">Loading...</div>
-  <audio id="voice"></audio>
+  <div id="listen-panel"><span id="listen-status" role="status" aria-live="polite">Microphone is off.</span><button id="listen-toggle" type="button" hidden>Stop listening</button></div>
+  <audio id="voice" playsinline controls></audio>
 
   <script type="module">
     import * as THREE from 'three';
@@ -34,7 +58,7 @@
 
     // ── Scene: white background ──
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(devicePixelRatio);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setSize(innerWidth, innerHeight);
     document.body.appendChild(renderer.domElement);
 
@@ -77,7 +101,8 @@
 
     // ── Lip sync: her mouth opens with the loudness of her voice ──
     const voice = document.getElementById('voice');
-    const audioCtx = new AudioContext();
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContextClass();
     const analyser = audioCtx.createAnalyser();
     audioCtx.createMediaElementSource(voice).connect(analyser);
     analyser.connect(audioCtx.destination);
@@ -90,27 +115,225 @@
       return Math.sqrt(sum / samples.length);
     }
 
-    // ── Ask Python for her next line, tell it when she is done ──
-    voice.onended = voice.onerror = () => fetch('/done', { method: 'POST' });
+    // ── Browser microphone: capture utterances and let Python detect the wake word. ──
+    const listenStatus = document.getElementById('listen-status');
+    const listenToggle = document.getElementById('listen-toggle');
+    const TARGET_RATE = 16000;
+    const SPEECH_RMS = 0.015;
+    const END_SILENCE_SEC = 0.9;
+    const MIN_SPEECH_SEC = 0.35;
+    const MAX_UTTERANCE_SEC = 15;
+    let micStream, micSource, micProcessor, micSink, wakeLock;
+    let listening = false, busy = false, awake = false;
+    let chunks = [], preroll = [], speaking = false, silentSec = 0, speechSec = 0, totalSec = 0;
+    let awakeTimer, voicePoll;
+    const AWAKE_TIMEOUT_MS = 15000;
 
-    async function checkForVoice() {
-      try {
-        const { audio } = await (await fetch('/next')).json();
-        if (audio) {
-          voice.src = audio;
-          await voice.play();
-        }
-      } catch { /* Python is not running; keep asking */ }
+    function setListenStatus(text) { listenStatus.textContent = text; }
+    function idleListenStatus() { setListenStatus(awake ? 'Riko heard you. What would you like?' : 'Listening for “Riko”…'); }
+    function resetCapture() { chunks = []; preroll = []; speaking = false; silentSec = speechSec = totalSec = 0; }
+
+    function downsample(samples, rate) {
+      if (rate === TARGET_RATE) return samples;
+      const ratio = rate / TARGET_RATE;
+      const out = new Float32Array(Math.floor(samples.length / ratio));
+      for (let i = 0; i < out.length; i++) {
+        const start = Math.floor(i * ratio), end = Math.min(Math.floor((i + 1) * ratio), samples.length);
+        let sum = 0;
+        for (let j = start; j < end; j++) sum += samples[j];
+        out[i] = sum / Math.max(1, end - start);
+      }
+      return out;
     }
 
-    // Browsers only allow sound after a click, so wait for one.
-    const start = document.getElementById('start');
-    start.textContent = 'Click to start';
-    start.onclick = () => {
-      start.remove();
-      audioCtx.resume();
-      setInterval(checkForVoice, 250);
+    function encodeWav(samples) {
+      const buffer = new ArrayBuffer(44 + samples.length * 2), view = new DataView(buffer);
+      const text = (offset, value) => { for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i)); };
+      text(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true); text(8, 'WAVEfmt ');
+      view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+      view.setUint32(24, TARGET_RATE, true); view.setUint32(28, TARGET_RATE * 2, true);
+      view.setUint16(32, 2, true); view.setUint16(34, 16, true); text(36, 'data');
+      view.setUint32(40, samples.length * 2, true);
+      for (let i = 0; i < samples.length; i++) {
+        const sample = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(44 + i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      }
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    async function sendUtterance() {
+      const captured = chunks, enough = speechSec >= MIN_SPEECH_SEC;
+      resetCapture();
+      if (!enough) return;
+      let length = 0;
+      for (const chunk of captured) length += chunk.length;
+      const merged = new Float32Array(length);
+      let offset = 0;
+      for (const chunk of captured) { merged.set(chunk, offset); offset += chunk.length; }
+      busy = true;
+      clearTimeout(awakeTimer);
+      setListenStatus(awake ? 'Thinking…' : 'Checking for “Riko”…');
+      try {
+        const response = await fetch(`/listen${awake ? '?wake=1' : ''}`, {
+          method: 'POST', headers: { 'Content-Type': 'audio/wav' },
+          body: encodeWav(downsample(merged, audioCtx.sampleRate))
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!listening) { busy = false; return; }
+        if (!response.ok) throw new Error(result.error || `Request failed (${response.status})`);
+        if (result.status === 'awake') {
+          awake = true;
+          busy = false;
+        } else if (result.status === 'reply') {
+          awake = false;
+          busy = true;
+          setListenStatus(`Riko: ${result.reply}`);
+        } else {
+          busy = false;
+        }
+      } catch (error) {
+        awake = false;
+        setListenStatus(error.message);
+        busy = false;
+      }
+      if (awake) awakeTimer = setTimeout(() => { awake = false; if (listening && !busy) idleListenStatus(); }, AWAKE_TIMEOUT_MS);
+      if (!busy && listening && listenStatus.textContent.startsWith('Checking')) idleListenStatus();
+    }
+
+    function captureAudio(event) {
+      if (!listening || busy) { if (speaking) resetCapture(); return; }
+      const input = event.inputBuffer.getChannelData(0), chunk = new Float32Array(input);
+      const seconds = chunk.length / audioCtx.sampleRate;
+      let sum = 0;
+      for (const sample of chunk) sum += sample * sample;
+      const loud = Math.sqrt(sum / chunk.length) > SPEECH_RMS;
+      if (!speaking) {
+        preroll.push(chunk);
+        if (preroll.length > 6) preroll.shift();
+        if (!loud) return;
+        speaking = true; chunks = preroll; preroll = [];
+      } else chunks.push(chunk);
+      totalSec += seconds;
+      if (loud) { silentSec = 0; speechSec += seconds; } else silentSec += seconds;
+      if (silentSec >= END_SILENCE_SEC || totalSec >= MAX_UTTERANCE_SEC) sendUtterance();
+    }
+
+    async function startListening() {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Microphone requires HTTPS.');
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } });
+      await audioCtx.resume();
+      micSource = audioCtx.createMediaStreamSource(micStream);
+      micProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
+      micProcessor.onaudioprocess = captureAudio;
+      micSink = audioCtx.createGain(); micSink.gain.value = 0;
+      micSource.connect(micProcessor); micProcessor.connect(micSink); micSink.connect(audioCtx.destination);
+      listening = true;
+      listenToggle.hidden = false;
+      listenToggle.textContent = 'Stop listening';
+      micStream.getTracks().forEach(track => track.addEventListener('ended', () => {
+        if (!listening) return;
+        stopListening();
+        start.style.display = 'flex';
+        setListenStatus('Microphone was interrupted. Tap to start listening again.');
+      }, { once: true }));
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = undefined; });
+        }
+      } catch { /* Wake Lock is optional. */ }
+      idleListenStatus();
+    }
+
+    function stopListening() {
+      listening = false; busy = false; awake = false; clearTimeout(awakeTimer);
+      listenToggle.hidden = true;
+      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = undefined; }
+      if (micProcessor) micProcessor.disconnect();
+      if (micSource) micSource.disconnect();
+      if (micSink) micSink.disconnect();
+      if (micStream) micStream.getTracks().forEach(track => track.stop());
+      micProcessor = micSource = micSink = micStream = undefined;
+      resetCapture();
+    }
+
+    // ── Ask Python for her next line and mark the end of playback. ──
+    voice.onplay = () => { busy = true; voice.classList.remove('show-controls'); };
+    voice.onended = voice.onerror = () => {
+      fetch('/done', { method: 'POST' }).catch(() => {});
+      busy = false;
+      if (listening) idleListenStatus();
     };
+    async function checkForVoice() {
+      try {
+        const response = await fetch('/next', { cache: 'no-store' });
+        const { audio } = await response.json();
+        if (audio) {
+          voice.src = audio;
+          try {
+            await voice.play();
+          } catch {
+            voice.classList.add('show-controls');
+            setListenStatus('Riko replied. Tap play to hear her.');
+          }
+        }
+      } catch { /* Retry on the next poll. */ }
+    }
+
+    // iOS requires a user gesture for mic and audio. The first tap starts both.
+    const start = document.getElementById('start');
+    start.innerHTML = '<strong>Tap to start Riko</strong><span>Allow microphone access, then say “Riko” followed by your request.</span>';
+    start.style.pointerEvents = 'none';
+    fetch('/mode', { cache: 'no-store' }).then(response => response.json()).then(mode => {
+      start.style.pointerEvents = 'auto';
+      if (!mode.web_listening) {
+        document.getElementById('listen-panel').hidden = true;
+        start.innerHTML = '<strong>Tap to view Riko</strong><span>Listening is in terminal mode. Enable audio to hear her avatar.</span>';
+        start.onclick = async () => {
+          await audioCtx.resume();
+          start.style.display = 'none';
+          if (!voicePoll) voicePoll = setInterval(checkForVoice, 250);
+        };
+      }
+    }).catch(() => { start.style.pointerEvents = 'auto'; });
+    start.onclick = async () => {
+      try {
+        await audioCtx.resume();
+        await startListening();
+        start.style.display = 'none';
+        if (!voicePoll) voicePoll = setInterval(checkForVoice, 250);
+      } catch (error) {
+        stopListening();
+        setListenStatus(error.name === 'NotAllowedError' ? 'Allow microphone access, then tap to try again.' : error.message);
+      }
+    };
+    listenToggle.addEventListener('click', async () => {
+      if (listening) {
+        stopListening();
+        listenToggle.hidden = false;
+        listenToggle.textContent = 'Start listening';
+        setListenStatus('Microphone is off.');
+        return;
+      }
+      try {
+        await startListening();
+      } catch (error) {
+        stopListening();
+        listenToggle.hidden = false;
+        listenToggle.textContent = 'Start listening';
+        setListenStatus(error.name === 'NotAllowedError' ? 'Allow microphone access, then tap again.' : error.message);
+      }
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || !listening) return;
+      if (micStream.getTracks().some(track => track.readyState === 'ended')) {
+        stopListening();
+        start.style.display = 'flex';
+        setListenStatus('Microphone was interrupted. Tap to start listening again.');
+      } else if (audioCtx.state !== 'running') {
+        audioCtx.resume().catch(() => setListenStatus('Tap the page to resume listening.'));
+      }
+    });
 
     // ── Every frame ──
     const clock = new THREE.Clock();

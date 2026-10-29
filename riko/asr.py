@@ -52,7 +52,7 @@ def transcribe(wav_bytes, cfg):
         groq = OpenAI(api_key=os.getenv("GROQ_API_KEY"), base_url="https://api.groq.com/openai/v1")
         text = groq.audio.transcriptions.create(model=GROQ_MODEL, file=("you.wav", wav_bytes)).text
     else:
-        segments, _ = _whisper.transcribe(io.BytesIO(wav_bytes))
+        segments, _ = _whisper.transcribe(io.BytesIO(wav_bytes), vad_filter=True)
         text = "".join(s.text for s in segments)  # each segment already starts with a space
     return text.strip()
 

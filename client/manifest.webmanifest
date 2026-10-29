@@ -1,0 +1,11 @@
+{
+  "name": "Riko",
+  "short_name": "Riko",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#17141f",
+  "theme_color": "#17141f",
+  "icons": [
+    { "src": "/icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}

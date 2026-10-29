@@ -33,9 +33,9 @@
 
 ## 🦊 Meet Riko
 
-Riko is a voice companion you set up yourself. Press Enter and talk. She hears you, comes up with a reply (usually a snarky one), and says it out loud while her lips move along on screen.
+Riko is a voice companion you set up yourself. Open her avatar page, tap once to allow the microphone, and say “Riko” followed by your request. She hears you, comes up with a reply (usually a snarky one), and says it out loud while her lips move along on screen.
 
-This repo is the open-source core of Project Riko: the whole loop from your voice to hers, written to be read. It's under 500 lines in total, and every part sits in its own small file, so when you want to change how she thinks, sounds or looks, you know exactly where to go.
+This repo is the open-source core of Project Riko: the whole loop from your voice to hers, written to be read. Each part sits in its own small file, so when you want to change how she thinks, sounds or looks, you know where to go.
 
 Her personality, her avatar and her voice all live in one config file. Making her yours takes a few minutes.
 
@@ -43,7 +43,7 @@ Her personality, her avatar and her voice all live in one config file. Making he
 
 | | |
 |---|---|
-| 🎙️ **Listens** | Push-to-talk. Press Enter, speak, press Enter. |
+| 🎙️ **Listens** | Browser wake word. Say “Riko” followed by your request. |
 | 👂 **Understands** | Speech to text with [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper) on your own PC, or [Groq](https://console.groq.com)'s fast online Whisper. |
 | 🧠 **Thinks** | Replies come from OpenAI GPT, in whatever personality you write for her. |
 | 📝 **Keeps the conversation** | The chat is saved to `chat_history.json`, so she picks up where you left off. |
@@ -62,11 +62,11 @@ flowchart LR
     voice --> face(["💃 Face<br/>VRM avatar + lip sync"])
 ```
 
-Each step is one file, and `main.py` runs them in a loop:
+Each step is one file. `main.py` starts the web listener by default; pass `--terminal` for terminal push-to-talk:
 
 | Step | File | What it does |
 |---|---|---|
-| 👂 Ears | `riko/asr.py` | Records you between the two Enters, turns it into text |
+| 👂 Ears | `riko/asr.py` | Transcribes browser audio and turns it into text |
 | 🧠 Brain | `riko/llm.py` | Sends the chat to OpenAI, saves her answer to the history |
 | 🗣️ Voice | `riko/tts.py` | Turns her answer into a voice clip |
 | 💃 Face | `riko/viewer.py` + `client/index.html` | Plays the clip on the avatar page and moves her mouth with it |
@@ -126,9 +126,20 @@ The first launch takes a minute while it downloads the speech recognition model.
 
 **6. Say hi.**
 
-1. Open **http://127.0.0.1:8080** and click once. Browsers only play sound after a click.
-2. Back in the terminal, press **Enter**, say something, press **Enter**.
-3. She answers on the page. **Ctrl+C** quits.
+1. Open **http://127.0.0.1:8080** and tap **Tap to start Riko**. Allow microphone access.
+2. Say “Riko” followed by your request. If you say only “Riko”, say your request after she acknowledges you.
+3. She answers on the avatar page. If Safari blocks automatic playback, tap play in the audio controls. **Ctrl+C** quits. Use `uv run main.py --terminal` for the older Enter-to-talk mode.
+
+### Use from iPhone/iPad over Tailscale
+
+Safari requires HTTPS to access the microphone. Enable MagicDNS and HTTPS certificates for your tailnet, start Riko on the host, then expose its local page with Tailscale Serve:
+
+```bash
+uv run main.py
+tailscale serve --bg 8080
+```
+
+Open the `https://<machine>.<tailnet>.ts.net` URL shown by `tailscale serve status` in Safari. Tap **Share → Add to Home Screen** for an app-like shortcut. The host still needs to be running Riko; iOS may stop microphone capture during calls or when the app is backgrounded, so tap to start again when needed.
 
 > [!TIP]
 > Set `tts: fish` in `character_config.yaml` and a plain `uv run main.py` does the same thing.
@@ -184,11 +195,11 @@ Same Riko, three ways to have her. Each one is made for a different kind of pers
 | | 🛠️ Open Source<br /><sub>this repo</sub> | 🧪 [Full Source](https://patreon.com/RayenAI)<br /><sub>on Patreon</sub> | 🖥️ [Desktop App](https://patreon.com/RayenAI)<br /><sub>on Patreon</sub> |
 |---|---|---|---|
 | **Made for** | Builders who want a clean base to make their own | Tinkerers who want every new feature and the code behind it | Anyone who wants her up and running, no code involved |
-| **What you get** | This repo: open source, under 500 lines | The full source of the newest build | A Windows app with an installer and a desktop icon |
+| **What you get** | This repo: open source, compact and easy to modify | The full source of the newest build | A Windows app with an installer and a desktop icon |
 | Talks with a lip-synced VRM avatar | ✅ | ✅ | ✅ |
 | Hears you | Faster-Whisper on your PC, or Groq | Groq Whisper | Groq Whisper |
 | Her voice | GPT-SoVITS voice clone or Fish Audio | GPT-SoVITS voice clone or Fish Audio | Both, switched in Settings, with automatic fallback |
-| Conversation | Push-to-talk, easy to rewire | Hands-free: she can tell when you've finished | Hands-free, or type to her |
+| Conversation | Browser wake word or terminal push-to-talk | Hands-free: she can tell when you've finished | Hands-free, or type to her |
 | Face and body | Lip sync, ready for your own animation system | Expressions and animations she picks herself | Expressions and animations she picks herself |
 | Memory | Chat history in a file you control | Long-term memory across sessions | Long-term memory you can browse, edit and reset |
 | Doing things | Plug in your own tools | Tool calling with tools you write | Looks things up online when you ask |
@@ -230,20 +241,20 @@ Tested on Windows 11 and Ubuntu 22.04 (WSL2) with an RTX 3060 12 GB. Faster-Whis
 | `GPT-SoVITS is not running` | Start its API server first (see [Local voice](#local-voice)), or run with `--tts fish`. |
 | `Port 8080 is busy` | Riko is probably already running in another terminal. Close that one. |
 | `Avatar not found` | Check the `vrm_model` path in `character_config.yaml`. |
-| She replies in the terminal, but there's no sound | Click the avatar page once. Browsers block sound until you do. |
+| The browser cannot access the microphone | Open on `localhost` or a secure HTTPS origin, allow microphone access, then tap the start screen. |
 | `no avatar page open, playing on speakers` | That's normal: with no page open she talks through your speakers. Open the page to see her. |
-| `(heard nothing, try again)` | Make sure your mic is the default recording device, and talk a little longer. |
+| Wake word is not detected | Check the status at the bottom of the avatar page, allow the microphone, and speak clearly. |
 
 ## 🔧 Under the hood
 
 ```
-main.py                the loop: record → transcribe → reply → speak → play
+main.py                startup checks and browser listener (or terminal mode with --terminal)
 riko/
   config.py            loads character_config.yaml and .env
-  asr.py               push-to-talk recording + speech to text
+  asr.py               browser audio transcription + terminal push-to-talk
   llm.py               OpenAI reply + chat_history.json
   tts.py               GPT-SoVITS or Fish Audio → client/audio/riko.wav
-  viewer.py            serves the avatar page and hands it each voice clip
+  viewer.py            serves the avatar page, wake-word API and voice clips
 client/
   index.html           three.js + three-vrm: the avatar, lip sync, rotate and zoom
 character_files/       her avatar (sample_avatar.vrm) and sample voice (main_sample.wav)
@@ -260,7 +271,7 @@ uv run python -m riko.asr      # record, then print what she heard
 
 **Ideas if you want to build on it**
 
-- **Hands-free listening.** Replace `record()` in `riko/asr.py` with something that notices when you stop talking.
+- **Hands-free improvements.** Tune the voice-activity threshold in `client/index.html` for your microphone and room.
 - **Emotions.** `client/index.html` already opens her mouth with `vrm.expressionManager.setValue('aa', ...)`. Expressions like `happy` and `angry` work the same way.
 
 ## 🙏 Credits

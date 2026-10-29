@@ -4,10 +4,13 @@ The chat is saved to history_file after every turn, so she remembers it
 next time. Delete that file to start fresh.
 """
 import json
+import threading
 
 from openai import OpenAI
 
 from riko.config import ROOT, need_key
+
+_history_lock = threading.Lock()
 
 
 def check(cfg):
@@ -15,20 +18,26 @@ def check(cfg):
 
 
 def reply(user_text, cfg):
-    history_path = ROOT / cfg["history_file"]
-    history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else []
-    history.append({"role": "user", "content": user_text})
+    with _history_lock:
+        history_path = ROOT / cfg["history_file"]
+        try:
+            history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else []
+        except json.JSONDecodeError:
+            history = []
+        if not isinstance(history, list):
+            history = []
+        history.append({"role": "user", "content": user_text})
 
-    # ponytail: sends the whole chat every turn; trim to history[-N:] if it gets long or pricey.
-    response = OpenAI().responses.create(
-        model=cfg["model"],
-        instructions=cfg["system_prompt"],
-        input=history,
-    )
+        response = OpenAI().responses.create(
+            model=cfg["model"],
+            instructions=cfg["system_prompt"],
+            input=history,
+        )
 
-    history.append({"role": "assistant", "content": response.output_text})
-    history_path.write_text(json.dumps(history, indent=2, ensure_ascii=False), encoding="utf-8")
-    return response.output_text
+        history.append({"role": "assistant", "content": response.output_text})
+        history = history[-40:]
+        history_path.write_text(json.dumps(history, indent=2, ensure_ascii=False), encoding="utf-8")
+        return response.output_text
 
 
 if __name__ == "__main__":

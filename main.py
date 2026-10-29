@@ -1,12 +1,12 @@
-"""Talk to Riko: press Enter, speak, and she answers out loud on the avatar page.
+"""Talk to Riko: speak her wake word on the avatar page, or use terminal push-to-talk.
 
-    your voice -> asr.py -> text -> llm.py -> her reply -> tts.py -> her voice -> viewer.py -> avatar
-
-Run:  uv run main.py                 (uses asr / tts from character_config.yaml)
-      uv run main.py --tts fish      (override the voice)
-      uv run main.py --asr groq      (override the ears)
+Run:  uv run main.py                    (browser wake word)
+      uv run main.py --terminal         (press Enter to talk)
+      uv run main.py --tts fish          (override the voice)
+      uv run main.py --asr groq          (override the ears)
 """
 import argparse
+import time
 
 from riko import asr, llm, tts, viewer
 from riko.config import load_config
@@ -16,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser(description="Talk to Riko.")
     parser.add_argument("--asr", choices=["local", "groq"], help="speech to text (overrides the config)")
     parser.add_argument("--tts", choices=["sovits", "fish"], help="her voice (overrides the config)")
+    parser.add_argument("--terminal", action="store_true", help="use terminal push-to-talk instead of browser wake word")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -26,7 +27,17 @@ def main():
     llm.check(cfg)
     asr.check(cfg)
     tts.check(cfg)
+    cfg["web_listening"] = not args.terminal
     viewer.start(cfg)
+
+    if not args.terminal:
+        print("[wake] Open the avatar page and say 'Riko' followed by your request.")
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            print("\nBye!")
+        return
 
     while True:
         try:
