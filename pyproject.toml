@@ -1,0 +1,16 @@
+[project]
+name = "riko-project"
+version = "1.0.0"
+description = "Push-to-talk anime voice companion: Whisper -> GPT -> GPT-SoVITS / Fish Audio -> VRM avatar."
+requires-python = ">=3.11"
+dependencies = [
+    "av<19",  # av 19 (Sep 2026) breaks faster-whisper 1.2.1 audio loading
+    "faster-whisper",
+    "numpy",
+    "openai",
+    "python-dotenv",
+    "pyyaml",
+    "requests",
+    "sounddevice",
+    "soundfile",
+]

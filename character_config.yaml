@@ -1,16 +1,36 @@
-OPENAI_API_KEY: sk-YOURAPIKEY
-history_file: chat_history.json
-model: "gpt-4.1-mini"
-presets:
-  default:
-    system_prompt: |
-      You are a helpful assistant named Riko.
-      You speak like a snarky anime girl.
-      Always refer to the user as "senpai".
+# Everything about your character lives in this file and in character_files/.
+# Paths are relative to this folder.
 
-sovits_ping_config:
+# ── Her personality ──────────────────────────────────────────
+model: gpt-4.1-mini              # any OpenAI model name
+history_file: chat_history.json  # delete this file to make her forget the chat
+system_prompt: |
+  You are a helpful assistant named Riko.
+  You speak like a snarky anime girl.
+  Always refer to the user as "senpai".
+
+# ── Her look ─────────────────────────────────────────────────
+vrm_model: character_files/sample_avatar.vrm   # any .vrm file (VRoid Studio exports work)
+
+# ── Her ears (speech to text) ────────────────────────────────
+# local = Faster-Whisper, free, runs on your PC
+# groq  = Groq's online Whisper, needs GROQ_API_KEY in .env
+asr: local
+
+# ── Her voice (text to speech) ───────────────────────────────
+# sovits = GPT-SoVITS, runs on your PC (start its API server first)
+# fish   = Fish Audio, online, needs FISH_API_KEY in .env
+tts: sovits
+
+sovits:
+  url: http://127.0.0.1:9880/tts
+  ref_audio_path: character_files/main_sample.wav  # 3-10 s clip of the voice to copy, no long silences
+  prompt_text: This is a sample voice for you to just get started with, you can replace this with your own voice samples, just make sure it doesn't have any long silences!
   text_lang: en
-  prompt_lang : en
-  ref_audio_path : character_files/main_sample.wav
-  prompt_text : This is a sample voice for you to just get started with because it sounds kind of cute but just make sure this doesn't have long silences.
-  
+  prompt_lang: en
+
+fish:
+  # The voice she always uses. Open any voice on fish.audio and copy the ID
+  # from its page address (fish.audio/m/<voice id>). This one is an e-girl voice.
+  voice_id: 98655a12fa944e26b274c535e5e03842
+  model: s2.1-pro

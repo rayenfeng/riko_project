@@ -1,4 +1,0 @@
-faster-whisper
-sounddevice
-openai
-requests
